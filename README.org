@@ -1,0 +1,5 @@
+* Attempt to swig imgui for go
+
+Quirks:
+- the imgui.h symlink is there to satisfy the C compilation. it looks very patchy, i know.
+
