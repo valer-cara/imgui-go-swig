@@ -6,7 +6,7 @@
  * the SWIG interface file instead.
  * ----------------------------------------------------------------------------- */
 
-// source: swig/imgui.i
+// source: imgui.i
 
 package imgui
 
