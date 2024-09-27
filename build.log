@@ -1,0 +1,23 @@
+imgui/imgui.h:2042: Warning 350: operator new ignored
+imgui/imgui.h:2043: Warning 351: operator delete ignored
+imgui/imgui.h:2537: Warning 325: Nested struct not currently supported (ImGuiTextRange ignored)
+imgui/imgui.h:2568: Warning 312: Nested union not currently supported (ignored).
+imgui/imgui.h:293: Warning 503: Can't wrap 'operator []' unless renamed to a valid identifier.
+imgui/imgui.h:294: Warning 503: Can't wrap 'operator []' unless renamed to a valid identifier.
+imgui/imgui.h:466: Warning 516: Overloaded method ImGui::GetColorU32(ImU32) ignored,
+imgui/imgui.h:464: Warning 516: using ImGui::GetColorU32(ImGuiCol) instead.
+imgui/imgui.h:464: Warning 516: Overloaded method ImGui::GetColorU32(ImGuiCol,float) ignored,
+imgui/imgui.h:466: Warning 516: using ImGui::GetColorU32(ImU32,float) instead.
+imgui/imgui.h:711: Warning 516: Overloaded method ImGui::Value(char const *,unsigned int) ignored,
+imgui/imgui.h:710: Warning 516: using ImGui::Value(char const *,int) instead.
+imgui/imgui.h:2231: Warning 451: Setting a const char * variable may leak memory.
+imgui/imgui.h:2232: Warning 451: Setting a const char * variable may leak memory.
+imgui/imgui.h:2301: Warning 451: Setting a const char * variable may leak memory.
+imgui/imgui.h:2302: Warning 451: Setting a const char * variable may leak memory.
+imgui/imgui.h:2392: Warning 890: Ignoring 'ImGuiIO_AppAcceptingEvents_set' due to Go name ('SetAppAcceptingEvents') conflict with 'SetAppAcceptingEvents'
+imgui/imgui.h:2514: Warning 503: Can't wrap 'operator bool' unless renamed to a valid identifier.
+imgui/imgui.h:2551: Warning 503: Can't wrap 'operator []' unless renamed to a valid identifier.
+imgui/imgui.h:2740: Warning 503: Can't wrap 'operator ImU32' unless renamed to a valid identifier.
+imgui/imgui.h:2741: Warning 503: Can't wrap 'operator ImVec4' unless renamed to a valid identifier.
+imgui/imgui.h:3052: Warning 451: Setting a const char * variable may leak memory.
+imgui/imgui.h:3361: Warning 890: Ignoring 'ImFontAtlas_TexID_set' due to Go name ('SetTexID') conflict with 'SetTexID'
