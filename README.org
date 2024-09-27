@@ -3,3 +3,19 @@
 Quirks:
 - the imgui.h symlink is there to satisfy the C compilation. it looks very patchy, i know.
 
+** Quirks
+*** imgui.h symlink
+*** Ignored va_list functions (the ones ending in "V" like "TextDisbledV")
+We want to ignore some va_list args because of an error that sounds like this:
+#+begin_quote
+# github.com/valer-cara/imgui-go-swig
+imgui_wrap.cxx: In function ‘void _wrap_TextV_imgui_dceda9d72f6c0ab0(_gostring_, __va_list_tag (*)[1])’:
+imgui_wrap.cxx:2465:10: error: ISO C++ forbids casting to an array type ‘va_list’ {aka ‘__va_list_tag [1]’}
+2465 |   arg2 = (va_list)*argp2;
+|          ^~~~~~~~~~~~~~~
+#+end_quote
+
+I saw the same thing done in another project that uses SWIG to wrap imgui but it looks fine-tuned to output LUA only: https://github.com/RayquazaGX/swigimgui. Notice those =%ignore= tags in =imgui.i=.
+
+More on va_args in the swig docs, it seems to be a somewhat hot (as in problematic) topic. https://www.swig.org/Doc3.0/Varargs.html
+
