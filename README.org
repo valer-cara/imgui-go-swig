@@ -113,6 +113,8 @@ imgui_wrap.cxx:2465:10: error: ISO C++ forbids casting to an array type ‘va_li
 I saw the same thing done in another project that uses SWIG to wrap imgui but it looks fine-tuned to output LUA only: https://github.com/RayquazaGX/swigimgui. Notice those =%ignore= tags in =imgui.i=.
 
 More on va_args in the swig docs, it seems to be a somewhat hot (as in problematic) topic. https://www.swig.org/Doc3.0/Varargs.html. Also, you can ignore all of that too! I actually advise you ignore all of that.
+** CGo build system
+See [[./cgo-explainer/README.org]] for details.
 
 ** Feedback
 I released this early, in this zombie state, because I feel that there may be more people wanting to use Go+Imgui and aren't 100% satisfied with the existing wrappers.
