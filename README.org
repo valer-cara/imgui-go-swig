@@ -3,11 +3,11 @@
 I wish to inform you that despite my initial skepticism, *it works on my machine!*
 
 ** Why this wrapper?
-Because the existing wrapper that looks most up-to-date and maintained, =cimgui-go=, does not expose the full API (missing calls like =imgui.NewFrame()=), /but more importantly/, it forces the user to wrap their code into a single =Loop()= function and pass that to the package for handling. See the examples in =cimgui-go= to understand what I mean by that =.Run(loopFunc)= pattern.
+Because the existing wrapper that looks most up-to-date and maintained, =cimgui-go=, does not expose the full API (missing calls like =imgui.NewFrame()=), /but more importantly/, it forces the user to wrap their code into a single =Loop()= function and pass that to the package for handling. See the [[https://github.com/AllenDang/cimgui-go/blob/main/examples/glfw/main.go#L41][examples]] in =cimgui-go= to understand what I mean by that =.Run(loopFunc)= pattern.
 
-There's even a Github Discussion in the project to support more of the original ImGui API and allow the user more fine-grained control over ImGui (which is what I've also been seeking). I want to use my own render loop and call ImGui in-line, as it was meant to be, without the extra /handholding/ that =cimgui-go= offers. That's the magic of immediate mode GUI i guess, the ability to call it on the spot unimpeded.
+There's even a [[https://github.com/AllenDang/cimgui-go/discussions/226][Github Discussion]] in the project to support more of the original ImGui API and allow the user more fine-grained control over ImGui (which is what I've also been seeking). I want to use [[https://github.com/valer-cara/carsim/blob/c92ae274c48a5f92cee783da51b5cc01b76b6bc5/sim/main.go#L267-L269][my own render loop]] and call ImGui in-line, as it was meant to be, without the [[https://pkg.go.dev/github.com/AllenDang/cimgui-go@v1.0.2/backend/glfwbackend#GLFWBackend.Run][extra]] /handholding/ that =cimgui-go= offers. That's the magic of immediate mode GUI i guess, the ability to call it on the spot unimpeded.
 
-I didn't quite like that so I spent 4 not-so-optimistic days to get this working. It actually took me 4 days to figure out how the =CGo= build system, =imgui=, =cimgui=, =cimgui-go= work, think of alternatives and finally decided to try SWIG, with little expectation of success. To my surprise, it worked! (Also, thanks Gippity!)
+I didn't quite like that so I spent 4 days to get this working: figure out how the =CGo= build system, =imgui=, =cimgui=, =cimgui-go= work, think of alternatives and finally decide to try SWIG, with little expectation of success. To my surprise, it worked! (Also, thanks Gippity!)
 
 ** How to use
 I've not yet cleaned up the build process, so it's still a bit quirky, but I think it's possible to use in your own program. My project uses the (seemingly) very common GLFW + OpenGL3 combo (go-gl/glfw + go-gl/gl)
@@ -115,4 +115,8 @@ I saw the same thing done in another project that uses SWIG to wrap imgui but it
 More on va_args in the swig docs, it seems to be a somewhat hot (as in problematic) topic. https://www.swig.org/Doc3.0/Varargs.html. Also, you can ignore all of that too! I actually advise you ignore all of that.
 
 ** Feedback
+I released this early, in this zombie state, because I feel that there may be more people wanting to use Go+Imgui and aren't 100% satisfied with the existing wrappers.
+
+Here's another unsatisfactory one to add to the bunch! 😂
+
 Happy to hear any! Post an issue in this repo. Thanks! 🙏
