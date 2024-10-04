@@ -1,6 +1,6 @@
 * ImGui wrapper for Go. Generated with SWIG.
 ** TL;DR
-I wish to inform you that despite my initial skepticism, *it works on my machine!*.
+I wish to inform you that despite my initial skepticism, *it works on my machine!*
 
 ** Why this wrapper?
 Because the existing wrapper that looks most up-to-date and maintained, `cimgui-go`, does not expose the full API (missing calls like `imgui.NewFrame()`), /but more importantly/, it forces the user to wrap their code into a single `Loop()` function and pass that to the package for handling. See the examples in `cimgui-go` to understand what I mean by that `.Run(loopFunc)` pattern.
