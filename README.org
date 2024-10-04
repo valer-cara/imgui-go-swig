@@ -3,11 +3,11 @@
 I wish to inform you that despite my initial skepticism, *it works on my machine!*
 
 ** Why this wrapper?
-Because the existing wrapper that looks most up-to-date and maintained, `cimgui-go`, does not expose the full API (missing calls like `imgui.NewFrame()`), /but more importantly/, it forces the user to wrap their code into a single `Loop()` function and pass that to the package for handling. See the examples in `cimgui-go` to understand what I mean by that `.Run(loopFunc)` pattern.
+Because the existing wrapper that looks most up-to-date and maintained, =cimgui-go=, does not expose the full API (missing calls like =imgui.NewFrame()=), /but more importantly/, it forces the user to wrap their code into a single =Loop()= function and pass that to the package for handling. See the examples in =cimgui-go= to understand what I mean by that =.Run(loopFunc)= pattern.
 
-There's even a Github Discussion in the project to support more of the original ImGui API and allow the user more fine-grained control over ImGui (which is what I've also been seeking). I want to use my own render loop and call ImGui in-line, as it was meant to be, without the extra /handholding/ that `cimgui-go` offers. That's the magic of immediate mode GUI i guess, the ability to call it on the spot unimpeded.
+There's even a Github Discussion in the project to support more of the original ImGui API and allow the user more fine-grained control over ImGui (which is what I've also been seeking). I want to use my own render loop and call ImGui in-line, as it was meant to be, without the extra /handholding/ that =cimgui-go= offers. That's the magic of immediate mode GUI i guess, the ability to call it on the spot unimpeded.
 
-I didn't quite like that so I spent 4 not-so-optimistic days to get this working. It actually took me 4 days to figure out how the `CGo` build system, `imgui`, `cimgui`, `cimgui-go` work, think of alternatives and finally decided to try SWIG, with little expectation of success. To my surprise, it worked! (Also, thanks Gippity!)
+I didn't quite like that so I spent 4 not-so-optimistic days to get this working. It actually took me 4 days to figure out how the =CGo= build system, =imgui=, =cimgui=, =cimgui-go= work, think of alternatives and finally decided to try SWIG, with little expectation of success. To my surprise, it worked! (Also, thanks Gippity!)
 
 ** How to use
 I've not yet cleaned up the build process, so it's still a bit quirky, but I think it's possible to use in your own program. My project uses the (seemingly) very common GLFW + OpenGL3 combo (go-gl/glfw + go-gl/gl)
@@ -34,28 +34,28 @@ Something useful I learned while hacking on this, how to debug the (C)Go build p
 # -work Doesn't remove the temporary directory where the build takes place
 #       so you can poke around to understand what's going on
 #
-# Both these arguments work with `go build` and `go run` so use whatever you like
+# Both these arguments work with =go build= and =go run= so use whatever you like
 go build -x -work .
 # OR
 go run -x -work .
 #+end_src
 
-You can also use `htop` to see `cc` using 99% of one of your many cores.
+You can also use =htop= to see =cc= using 99% of one of your many cores.
 
-*** About that `-lglfw` flag passed to the linker.
-I'm currently linking with the system installed `libglfw`. It won't work without, linking will fail. Not sure yet what to do about it yet....
+*** About that =-lglfw= flag passed to the linker.
+I'm currently linking with the system installed =libglfw=. It won't work without, linking will fail. Not sure yet what to do about it yet....
 
-Without `-lglfw` I get this error:
+Without =-lglfw= I get this error:
 #+begin_src sh
 /usr/lib/go/pkg/tool/linux_amd64/link: running g++ failed: exit status 1
-/usr/sbin/ld: ../../imgui-go-swig/imgui/libimgui.a(imgui_impl_glfw.o): in function `ImGui_ImplGlfw_UpdateGamepads()':
-imgui_impl_glfw.cpp:(.text+0x17f1): undefined reference to `glfwGetGamepadState'
+/usr/sbin/ld: ../../imgui-go-swig/imgui/libimgui.a(imgui_impl_glfw.o): in function =ImGui_ImplGlfw_UpdateGamepads()':
+imgui_impl_glfw.cpp:(.text+0x17f1): undefined reference to =glfwGetGamepadState'
 collect2: error: ld returned 1 exit status
 #+end_src
 
-I was expecting the compiler to resolve those symbols using the compiled code in the `go-gl/glfw` object files which I'm importing in my project in some packages, but it seems that my mental model of the CGo build system is not that accurate. CGo packages are still namespaced, so plain global symbols like `glfwGetGamepadState` are not found.
+I was expecting the compiler to resolve those symbols using the compiled code in the =go-gl/glfw= object files which I'm importing in my project in some packages, but it seems that my mental model of the CGo build system is not that accurate. CGo packages are still namespaced, so plain global symbols like =glfwGetGamepadState= are not found.
 
-If you check out what symbols are generated from the compilation of go-gl/glfw, you get some C symbols, but they look fairly "unexported", as in, the plain function symbols are wrapped in longer, more specific names. Eg: `glfwInit` -> `github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwCreateWindow.abi0`. So with my `-lglfw` hack I'm in a kind of Split-Brain situation with 2 GLFW instances: one the compiled in code from go-gl/glfw, and one the runtime-linked code from libglfw on the system.
+If you check out what symbols are generated from the compilation of go-gl/glfw, you get some C symbols, but they look fairly "unexported", as in, the plain function symbols are wrapped in longer, more specific names. Eg: =glfwInit= -> =github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwCreateWindow.abi0=. So with my =-lglfw= hack I'm in a kind of Split-Brain situation with 2 GLFW instances: one the compiled in code from go-gl/glfw, and one the runtime-linked code from libglfw on the system.
 
 This is /awkward/, but atm I'm living with it..
 Fortunately I've not hit any unpleasant [[effects][https://valer.dev/posts/2024-10-01-all-models-are-wrong-john-sterman/#:~:text=%E2%80%9CPeople%20frequently%20talk%20about%20unexpected%20surprises%20and%20side%20effects%20as%20if%20they%20were%20a%20feature%20of%20reality.%E2%80%9D]] of this duplication. I would expect to hit a real Brain Split if say my code would call into the Go-GLFW setting some globals there, the imgui code would call into GLFW (the system library) setting some other (doppelganger) globals there. However, if imgui sticks only to pure-function calls, and doesn't read any important global state in GLFW, then we're on a fairly blunt knife's edge.
