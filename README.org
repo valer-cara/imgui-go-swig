@@ -1,10 +1,105 @@
-* Attempt to swig imgui for go
+* ImGui wrapper for Go. Generated with SWIG.
+** TL;DR
+I wish to inform you that despite my initial skepticism, *it works on my machine!*.
 
-Quirks:
-- the imgui.h symlink is there to satisfy the C compilation. it looks very patchy, i know.
+** Why this wrapper?
+Because the existing wrapper that looks most up-to-date and maintained, `cimgui-go`, does not expose the full API (missing calls like `imgui.NewFrame()`), /but more importantly/, it forces the user to wrap their code into a single `Loop()` function and pass that to the package for handling. See the examples in `cimgui-go` to understand what I mean by that `.Run(loopFunc)` pattern.
 
-** Quirks
-*** imgui.h symlink
+There's even a Github Discussion in the project to support more of the original ImGui API and allow the user more fine-grained control over ImGui (which is what I've also been seeking). I want to use my own render loop and call ImGui in-line, as it was meant to be, without the extra /handholding/ that `cimgui-go` offers. That's the magic of immediate mode GUI i guess, the ability to call it on the spot unimpeded.
+
+I didn't quite like that so I spent 4 not-so-optimistic days to get this working. It actually took me 4 days to figure out how the `CGo` build system, `imgui`, `cimgui`, `cimgui-go` work, think of alternatives and finally decided to try SWIG, with little expectation of success. To my surprise, it worked! (Also, thanks Gippity!)
+
+** How to use
+I've not yet cleaned up the build process, so it's still a bit quirky, but I think it's possible to use in your own program. My project uses the (seemingly) very common GLFW + OpenGL3 combo (go-gl/glfw + go-gl/gl)
+
+I currently use it like this:
+#+begin_src sh
+# clone this repo next to your project's root dir
+git clone https://github.com/valer-cara/imgui-go-swig.git
+
+# now in my project, which lives in the same parent dir as imgui-go-swig
+cd my-personal-go-project-using-gogl-glfw-and-imgui
+
+# manually pass these LD flags
+env CGO_LDFLAGS="-L../imgui-go-swig/imgui -limgui -lglfw" go run ./
+
+# If you use GLFW too, you'd need to ensure you have LibGLFW (~v3) installed on your system.
+#+end_src
+
+It'll probably take a while to build, because there's a lot of C compilation to be done under the hood: ImGui, GLFW, OpenGL.
+
+Something useful I learned while hacking on this, how to debug the (C)Go build process:
+#+begin_src sh
+# -x    Shows the commands executed
+# -work Doesn't remove the temporary directory where the build takes place
+#       so you can poke around to understand what's going on
+#
+# Both these arguments work with `go build` and `go run` so use whatever you like
+go build -x -work .
+# OR
+go run -x -work .
+#+end_src
+
+You can also use `htop` to see `cc` using 99% of one of your many cores.
+
+*** About that `-lglfw` flag passed to the linker.
+I'm currently linking with the system installed `libglfw`. It won't work without, linking will fail. Not sure yet what to do about it yet....
+
+Without `-lglfw` I get this error:
+#+begin_src sh
+/usr/lib/go/pkg/tool/linux_amd64/link: running g++ failed: exit status 1
+/usr/sbin/ld: ../../imgui-go-swig/imgui/libimgui.a(imgui_impl_glfw.o): in function `ImGui_ImplGlfw_UpdateGamepads()':
+imgui_impl_glfw.cpp:(.text+0x17f1): undefined reference to `glfwGetGamepadState'
+collect2: error: ld returned 1 exit status
+#+end_src
+
+I was expecting the compiler to resolve those symbols using the compiled code in the `go-gl/glfw` object files which I'm importing in my project in some packages, but it seems that my mental model of the CGo build system is not that accurate. CGo packages are still namespaced, so plain global symbols like `glfwGetGamepadState` are not found.
+
+If you check out what symbols are generated from the compilation of go-gl/glfw, you get some C symbols, but they look fairly "unexported", as in, the plain function symbols are wrapped in longer, more specific names. Eg: `glfwInit` -> `github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwCreateWindow.abi0`. So with my `-lglfw` hack I'm in a kind of Split-Brain situation with 2 GLFW instances: one the compiled in code from go-gl/glfw, and one the runtime-linked code from libglfw on the system.
+
+This is /awkward/, but atm I'm living with it..
+Fortunately I've not hit any unpleasant [[effects][https://valer.dev/posts/2024-10-01-all-models-are-wrong-john-sterman/#:~:text=%E2%80%9CPeople%20frequently%20talk%20about%20unexpected%20surprises%20and%20side%20effects%20as%20if%20they%20were%20a%20feature%20of%20reality.%E2%80%9D]] of this duplication. I would expect to hit a real Brain Split if say my code would call into the Go-GLFW setting some globals there, the imgui code would call into GLFW (the system library) setting some other (doppelganger) globals there. However, if imgui sticks only to pure-function calls, and doesn't read any important global state in GLFW, then we're on a fairly blunt knife's edge.
+
+#+begin_src sh
+readelf -aW ./my-go-built-program | less
+......
+  1940: 00000000004b43e0   119 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.init
+  1941: 00000000004b4460   262 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_CString
+  1942: 00000000004b4580   115 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_free.abi0
+  1943: 00000000004b4600   347 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwCreateWindow.abi0
+  1944: 00000000004b4760    84 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwInit.abi0
+  1945: 00000000004b47c0   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwMakeContextCurrent.abi0
+  1946: 00000000004b4860    76 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwPollEvents.abi0
+  1947: 00000000004b48c0   182 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetCursorPosCallback.abi0
+  1948: 00000000004b4980   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetCursorPosCallbackCB.abi0
+  1949: 00000000004b4a20    76 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetErrorCallbackCB.abi0
+  1950: 00000000004b4a80   182 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetKeyCallback.abi0
+  1951: 00000000004b4b40   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetKeyCallbackCB.abi0
+  1952: 00000000004b4be0   182 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetMouseButtonCallback.abi0
+  1953: 00000000004b4ca0   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetMouseButtonCallbackCB.abi0
+  1954: 00000000004b4d40   182 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetScrollCallback.abi0
+  1955: 00000000004b4e00   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetScrollCallbackCB.abi0
+  1956: 00000000004b4ea0   182 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetWindowSizeCallback.abi0
+  1957: 00000000004b4f60   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSetWindowSizeCallbackCB.abi0
+  1958: 00000000004b5000   139 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwSwapBuffers.abi0
+  1959: 00000000004b50a0    76 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwTerminate.abi0
+  1960: 00000000004b5100   202 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwWindowHint.abi0
+  1961: 00000000004b51e0   149 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._Cfunc_glfwWindowShouldClose.abi0
+  1962: 00000000004b5280   123 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw._cgo_cmalloc.abi0
+  1963: 00000000004b5300    77 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.(*Window).MakeContextCurrent
+  1964: 00000000004b5360    98 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.(*Window).MakeContextCurrent.func1
+  1965: 00000000004b53e0    77 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.(*Window).SwapBuffers
+  1966: 00000000004b5440    98 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.(*Window).SwapBuffers.func1
+  1967: 00000000004b54c0   303 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.ErrorCode.String
+  1968: 00000000004b5600   165 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.(*Error).Error
+  1969: 00000000004b56c0   371 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.goErrorCB
+  1970: 00000000004b5840    39 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.init.0
+  1971: 00000000004b5880   246 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.flushErrors
+  1972: 00000000004b5980   613 FUNC    LOCAL  DEFAULT   16 github.com/go-gl/glfw/v3.2/glfw.acceptError
+......
+#+end_src
+
+** More Quirks
 *** Ignored va_list functions (the ones ending in "V" like "TextDisbledV")
 We want to ignore some va_list args because of an error that sounds like this:
 #+begin_quote
@@ -17,5 +112,7 @@ imgui_wrap.cxx:2465:10: error: ISO C++ forbids casting to an array type ‘va_li
 
 I saw the same thing done in another project that uses SWIG to wrap imgui but it looks fine-tuned to output LUA only: https://github.com/RayquazaGX/swigimgui. Notice those =%ignore= tags in =imgui.i=.
 
-More on va_args in the swig docs, it seems to be a somewhat hot (as in problematic) topic. https://www.swig.org/Doc3.0/Varargs.html
+More on va_args in the swig docs, it seems to be a somewhat hot (as in problematic) topic. https://www.swig.org/Doc3.0/Varargs.html. Also, you can ignore all of that too! I actually advise you ignore all of that.
 
+** Feedback
+Happy to hear any! Post an issue in this repo. Thanks! 🙏
