@@ -1,0 +1,34 @@
+* How CGo works. Go Packages. Symbol Names. Symbol Tables
+
+We're building this demo go package and inspecting it with =readelf -aW ./my-package=. Initially without the =//export ExportedFoo= comment, and then with that comment, and notice the differences in the various symbol tables of the compiled output.
+
+- Note: we're using =go:noinline= because these functions are so simple that the compiler
+  will eliminate them from the compiled binary. We tell the compiler we want to keep them
+  and not optimize them out.
+
+- The Go compiler will ALWAYS generate symbols =main.UnexportedFoo= and =main.ExportedFoo= in
+  =.symtab= symbol table.
+
+- When adding =//export Foo= to a function, the follwing new symbols are created:
+  1. in =.dynsym=, the *Dynamic Symbol Table*
+     - an =ExportedFoo= symbol will be added to the =.dynsym= symbol table. That's how you get to call if from C, using only the =ExportedFoo()= name, and completely forgetting about the package name where it originated (i.e =main= in this demo).
+
+  2. in =.symtab=, the *Static Symbol Table*
+     - an =ExportedFoo= symbol will be added to the =.symtab= symbol table.
+     - a =_cgoexp_b9140c03efff_ExportedFoo= symbol will be added to =.symtab=.
+
+=_cgoexp_b9140c03efff_ExportedFoo=: This is an internal helper function that Go uses for handling the actual interaction between the C runtime and Go's internal runtime. It provides an additional layer where the Go runtime can prepare for the C-to-Go function call transition, such as managing goroutines, handling garbage collection, and ensuring thread safety.  The part =_cgoexp_b9140c03efff= is an internal identifier that likely represents some hash of the package or build details, and this function is never called directly by C.
+
+** Dynamic Symbol Table (.dynsym) and Static Symbol Table (.symtab)
+Please read this excellent SO answer here: [[https://reverseengineering.stackexchange.com/a/21623/25178][linux - Why have two symbols tables? - Reverse Engineering Stack Exchange]].
+
+#+begin_quote
+In CSAPP’s terminology, the dynamic loader is the in-kernel ELF loader, and the dynamic linker is ld-linux.so. ([[https://unix.stackexchange.com/a/611736/156219][shared library - What is the linker and what is the loader in dynamic linking...]])
+#+end_quote
+
+*TL;DR (in my understanding)*:
+- dynamic symbol table is mapped into process memory! static symbol table is not.
+- dynamic symbol table is typically smaller than symtab, because it only contains symbols required to be exposed (eg. a shared library), or symbols required to be loaded in when program runs (eg. a program that requires a certain shared library available on the system).
+- symtab is used for Debugging (containing all symbols in program) and Static Linking.
+- the linker (ld) tries to resolve as many symbols as possible at build time. The unresolved ones are left to the loader (kernel) to resolve at runtime.
+
